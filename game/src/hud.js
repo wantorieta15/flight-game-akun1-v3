@@ -75,12 +75,14 @@ const SenjaHud = (function () {
     ctx.fillStyle = '#ffc861';
     ctx.fill();
     // Label + angka: angka di tengah-bawah, label menempel di dalam rim.
-    ctx.fillStyle = '#ffb347';
-    ctx.font = 'bold 10px sans-serif';
+    // Revisi v3-rev1: label & angka dibesarkan 1 px + warna label lebih terang
+    // supaya terbaca dari screenshot 1280×720.
+    ctx.fillStyle = '#ffc861';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(label, cx, cy + r - 16);
+    ctx.fillText(label, cx, cy + r - 15);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px sans-serif';
+    ctx.font = 'bold 15px sans-serif';
     ctx.fillText(unit, cx, cy + 8);
     ctx.restore();
   }

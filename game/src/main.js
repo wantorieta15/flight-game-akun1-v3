@@ -147,6 +147,12 @@
     SenjaHud.showMessage('📦 MISI 1: Surat Kilat — lepas landas (tahan Shift), terbang lewat RING HIJAU di Pulau Senja.');
   }
 
+  // Bingkai panel kokpit (dashboard + pilar kanopi) hanya di mode kokpit.
+  function syncCockpitFrame() {
+    const frame = $('cockpit-frame');
+    if (frame) frame.classList.toggle('hidden', camState.mode !== 'cockpit');
+  }
+
   function resetGame() {
     plane = SenjaFlight.createPlane();
     state = newGameState();
@@ -154,6 +160,7 @@
     camState = SenjaCamera.createCameraState();
     $('menu-screen').classList.remove('hidden');
     $('end-screen').classList.add('hidden');
+    syncCockpitFrame();
     if (shotMode) applyShot(shotMode);
   }
 
@@ -173,7 +180,9 @@
       state.missionTimeLeft = 96; state.score = 0;
       camState.mode = 'chase';
     } else if (mode === 'cockpit') {
-      // Kokpit: hidung + sayap + baling-baling, Pulau Mercusuar + mercusuar di depan.
+      // Kokpit (revisi v3-rev1): kamera di dalam kanopi — hidung cream +
+      // baling-baling berputar di depan, dashboard + pilar kanopi di tepi
+      // frame; Pulau Mercusuar + mercusuar di depan.
       plane.x = 320; plane.y = 120; plane.z = 720;
       plane.heading = 166; plane.pitch = -2; plane.roll = 6;
       plane.speed = 58; plane.throttle = 0.66; plane.airborne = true; plane.onGround = false;
@@ -201,6 +210,7 @@
       camState.mode = 'chase';
     }
     state.cameraMode = camState.mode;
+    syncCockpitFrame();
     // Snap kamera ke posisi shot supaya frame pertama sudah benar.
     for (let i = 0; i < 40; i++) SenjaCamera.updateCamera(camera, camState, plane, 1 / 60, time);
     window.__shotReady = true;
@@ -276,8 +286,11 @@
     }
     if (state.phase === 'flying' || state.phase === 'paused') {
       SenjaCamera.updateCamera(camera, camState, plane, dt, time);
+      syncCockpitFrame();
     }
-    SenjaAircraft.updateAircraft(aircraft, plane, dt, time, camState.mode === 'cockpit');
+    // Revisi v3-rev1: baling-baling selalu terlihat, termasuk dari kokpit;
+    // kanopi kaca disembunyikan di mode kokpit (transparan dari dalam).
+    SenjaAircraft.updateAircraft(aircraft, plane, dt, time, false, camState.mode === 'cockpit');
     if (world.lighthouse) world.lighthouse.beam.rotation.y = time * 0.7;
     placeRings();
     SenjaHud.updateHud(state, plane);

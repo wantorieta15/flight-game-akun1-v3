@@ -1,5 +1,13 @@
 // Model pesawat kargo baling-baling Senja Terbang — dibangun dari bentuk low-poly:
 // badan, sayap, ekor, baling-baling, lampu navigasi, roda, dan kargo di perut.
+//
+// REVISI v3-rev1: baling-baling SELALU terlihat, termasuk di mode kokpit.
+// v3 menyembunyikan prop di kokpit dengan alasan "blur menutupi terrain" —
+// akibatnya screenshot kokpit kehilangan penanda "dari dalam" yang paling
+// jelas. Kamera kokpit kini di dalam kanopi (lihat camera.js), 5,1 m di
+// belakang prop: bilah + cakram blur justru memberi kesan kecepatan dan
+// kedalaman, tanpa menutupi runway di depan. Parameter hideProp dipertahankan
+// demi kompatibilitas pemanggil lama, tapi diabaikan dengan sengaja.
 const SenjaAircraft = (function () {
   const P = SENJA_CONFIG.palette;
 
@@ -90,13 +98,18 @@ const SenjaAircraft = (function () {
     crate.position.set(0, -1.9, 1.6);
     plane.add(crate);
     plane.traverse((o) => { if (o.isMesh) o.castShadow = false; });
-    return { group: plane, prop, navL, navR };
+    return { group: plane, prop, navL, navR, canopy };
   }
 
   // Sinkronkan mesh pesawat dengan state terbang.
-  // hideProp: di mode kokpit, baling-baling disembunyikan — dari kokpit ia hanya
-  // blur di depan hidung dan akan menutupi terrain (kamera 2 m di belakangnya).
-  function updateAircraft(mesh, plane, dt, time, hideProp) {
+  // hideProp: TIDAK dipakai lagi (revisi v3-rev1) — baling-baling selalu
+  // terlihat, termasuk dari kokpit. Argumen dipertahankan agar pemanggil lama
+  // tidak pecah.
+  // hideCanopy: di mode kokpit, kanopi kaca DISEMBUNYIKAN — dari kursi pilot,
+  // kaca itu transparan; bila dirender opak (Lambert), ia menjadi gumpalan
+  // ungu yang menutupi hidung + baling-baling dari kamera kokpit yang
+  // menunduk. Di mode chase kanopi tetap tampil (screenshot 1/3/4 tak berubah).
+  function updateAircraft(mesh, plane, dt, time, hideProp, hideCanopy) {
     mesh.group.position.set(plane.x, plane.y + 1.2, plane.z);
     mesh.group.rotation.order = 'YXZ';
     // Yaw: hidung model (-Z lokal) harus menunjuk ke arah gerak (sin h, -cos h),
@@ -105,7 +118,8 @@ const SenjaAircraft = (function () {
     mesh.group.rotation.x = (plane.pitch * Math.PI) / 180;
     mesh.group.rotation.z = (-plane.roll * Math.PI) / 180;
     mesh.prop.rotation.z = plane.propAngle;
-    mesh.prop.visible = !hideProp;
+    mesh.prop.visible = true; // revisi: jangan pernah sembunyikan dari kokpit
+    mesh.canopy.visible = !hideCanopy; // revisi: kaca transparan dari dalam
     // Lampu navigasi berkedip.
     const blink = Math.sin(time * 6) > 0;
     mesh.navL.visible = blink;

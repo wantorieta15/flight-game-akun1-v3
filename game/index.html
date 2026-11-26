@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Senja Terbang — Kepulauan Courier</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2a1a3a;
+    font-family: "Segoe UI", system-ui, sans-serif; color: #fff; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hidden { display: none !important; }
+  /* ---- HUD atas: ALT / SPD / HDG angka besar ---- */
+  #hud-top { position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 14px; z-index: 5; pointer-events: none; }
+  .hud-box { background: rgba(16, 10, 28, 0.72); border: 2px solid #ffc861; border-radius: 10px;
+    padding: 6px 18px 8px; text-align: center; min-width: 118px;
+    box-shadow: 0 0 14px rgba(255, 140, 66, 0.45); }
+  .hud-box .lbl { font-size: 12px; letter-spacing: 2px; color: #ffb347; font-weight: bold; }
+  .hud-box .val { font-size: 34px; font-weight: 800; line-height: 1.05; color: #fff; }
+  .hud-box .unit { font-size: 12px; color: #ffd9a0; }
+  #hud-score-box { border-color: #39e75f; box-shadow: 0 0 14px rgba(57, 231, 95, 0.4); }
+  #compass-strip { position: fixed; top: 96px; left: 50%; transform: translateX(-50%);
+    font-size: 16px; letter-spacing: 1px; font-weight: bold; color: #ffe9a8;
+    background: rgba(16, 10, 28, 0.6); border-radius: 8px; padding: 3px 14px; z-index: 5;
+    pointer-events: none; white-space: nowrap; }
+  #compass-strip span:first-child { color: #39e75f; }
+  /* ---- Panel misi kiri ---- */
+  #mission-panel { position: fixed; top: 10px; left: 10px; width: 268px; z-index: 5;
+    background: rgba(16, 10, 28, 0.78); border: 2px solid #ff8c42; border-radius: 12px;
+    padding: 10px 12px; font-size: 14px; line-height: 1.45; pointer-events: none; }
+  .mission-title { font-weight: 800; color: #ffc861; font-size: 15px; margin-bottom: 6px; letter-spacing: 1px; }
+  .mission-row { border-top: 1px solid rgba(255, 200, 97, 0.35); padding: 6px 0; }
+  .mission-row.active { background: rgba(255, 140, 66, 0.22); border-radius: 6px; padding: 6px; }
+  .mission-row.done { opacity: 0.55; }
+  .mission-row span { color: #ffd9a0; font-size: 12.5px; }
+  .mission-hint { color: #7dff9e !important; font-weight: 600; }
+  .mission-foot { margin-top: 6px; font-size: 12.5px; color: #ffe9a8; font-weight: bold; }
+  /* ---- Fuel + timer senja kanan ---- */
+  #right-bars { position: fixed; top: 10px; right: 10px; width: 230px; z-index: 5; pointer-events: none; }
+  .bar-box { background: rgba(16, 10, 28, 0.78); border: 2px solid #ffc861; border-radius: 10px;
+    padding: 8px 10px; margin-bottom: 8px; }
+  .bar-box .bar-lbl { font-size: 13px; font-weight: 800; letter-spacing: 1px; color: #ffb347; }
+  .bar-track { height: 16px; background: #241a33; border-radius: 8px; margin-top: 5px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 8px; transition: width 0.2s; }
+  #fuel-fill { background: #39e75f; width: 100%; }
+  #sun-fill { background: linear-gradient(90deg, #ff8c42, #c65dbb); width: 100%; }
+  /* ---- Pesan tengah ---- */
+  #hud-message { position: fixed; top: 150px; left: 50%; transform: translateX(-50%);
+    max-width: 640px; text-align: center; font-size: 20px; font-weight: 700; z-index: 6;
+    background: rgba(16, 10, 28, 0.82); border: 2px solid #39e75f; border-radius: 12px;
+    padding: 10px 18px; transition: opacity 0.4s; pointer-events: none; text-shadow: 0 2px 4px #000; }
+  #hud-warn { position: fixed; top: 210px; left: 50%; transform: translateX(-50%);
+    font-size: 19px; font-weight: 800; color: #ff6a5e; z-index: 6; display: none;
+    background: rgba(40, 5, 5, 0.8); border-radius: 8px; padding: 4px 14px; pointer-events: none; }
+  /* ---- Panel instrumen bawah: dial analog + throttle ---- */
+  #instrument-panel { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%);
+    display: flex; align-items: flex-end; gap: 16px; z-index: 5; pointer-events: none; }
+  #dials { background: rgba(12, 8, 22, 0.82); border: 2px solid #ffc861; border-radius: 14px;
+    box-shadow: 0 0 18px rgba(255, 140, 66, 0.5); }
+  #throttle-box { background: rgba(12, 8, 22, 0.82); border: 2px solid #ffc861; border-radius: 12px;
+    padding: 8px 12px; width: 150px; }
+  #throttle-box .bar-lbl { font-size: 12px; font-weight: 800; color: #ffb347; letter-spacing: 1px; }
+  #throttle-fill { background: #ff8c42; width: 0%; }
+  #controls-hint { font-size: 11.5px; color: #e8d8ff; margin-top: 6px; line-height: 1.5; }
+  /* ---- Layar menu / pause / akhir ---- */
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center;
+    justify-content: center; background: linear-gradient(180deg, rgba(58,42,99,0.88), rgba(255,140,66,0.55));
+    backdrop-filter: blur(2px); }
+  .card { background: rgba(16, 10, 28, 0.92); border: 3px solid #ffc861; border-radius: 18px;
+    padding: 26px 34px; max-width: 620px; text-align: center;
+    box-shadow: 0 0 40px rgba(255, 140, 66, 0.55); }
+  .card h1 { margin: 0 0 4px; font-size: 46px; letter-spacing: 3px; color: #ffc861; }
+  .card h2 { margin: 0 0 14px; font-size: 19px; color: #ffd9a0; font-weight: 600; }
+  .card p { font-size: 15.5px; line-height: 1.6; color: #f2e8ff; margin: 8px 0; text-align: left; }
+  .card .keys { font-size: 14px; background: rgba(255,140,66,0.14); border-radius: 10px; padding: 10px 14px; }
+  .big-btn { margin-top: 16px; font-size: 21px; font-weight: 800; color: #241a33;
+    background: linear-gradient(180deg, #ffd27a, #ff8c42); border: none; border-radius: 12px;
+    padding: 13px 34px; cursor: pointer; box-shadow: 0 4px 0 #b3541e; }
+  .big-btn:hover { filter: brightness(1.08); }
+  .big-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #b3541e; }
+  .ghost-btn { margin-top: 10px; font-size: 15px; font-weight: 700; color: #ffd9a0;
+    background: transparent; border: 2px solid #ffc861; border-radius: 10px;
+    padding: 8px 20px; cursor: pointer; }
+  #end-score { font-size: 22px; font-weight: 800; color: #7dff9e; }
+  #end-reason { font-size: 16px; color: #ffd9a0; }
+  #sr-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="sr-status" aria-live="polite">Game Senja Terbang dimuat.</div>
+
+<div id="hud-top">
+  <div class="hud-box"><div class="lbl">ALTITUDE</div><div class="val"><span id="hud-alt">0</span> <span class="unit">ft</span></div></div>
+  <div class="hud-box"><div class="lbl">AIRSPEED</div><div class="val"><span id="hud-spd">0</span> <span class="unit">kt</span></div></div>
+  <div class="hud-box"><div class="lbl">HEADING</div><div class="val"><span id="hud-hdg">000°</span></div></div>
+  <div class="hud-box" id="hud-score-box"><div class="lbl">SKOR</div><div class="val" id="hud-score">0</div></div>
+</div>
+<div id="compass-strip"></div>
+<div id="mission-panel"></div>
+<div id="right-bars">
+  <div class="bar-box"><div class="bar-lbl" id="fuel-text">FUEL 100%</div>
+    <div class="bar-track"><div class="bar-fill" id="fuel-fill"></div></div></div>
+  <div class="bar-box"><div class="bar-lbl" id="sun-text">SENJA 08:00</div>
+    <div class="bar-track"><div class="bar-fill" id="sun-fill"></div></div></div>
+</div>
+<div id="hud-message" style="opacity:0"></div>
+<div id="hud-warn"></div>
+<div id="instrument-panel">
+  <canvas id="dials" width="560" height="120"></canvas>
+  <div id="throttle-box">
+    <div class="bar-lbl">THROTTLE — SHIFT / CTRL</div>
+    <div class="bar-track"><div class="bar-fill" id="throttle-fill"></div></div>
+    <div id="controls-hint">↑↓ pitch • ←→ belok<br>Space rem udara • C kamera<br>P pause • R restart • M suara</div>
+  </div>
+</div>
+
+<div class="screen" id="menu-screen">
+  <div class="card">
+    <h1>✈️ SENJA TERBANG</h1>
+    <h2>Kepulauan Courier — antar 3 paket antar pulau sebelum senja habis</h2>
+    <p>🌅 Kamu pilot pesawat kargo baling-baling di kepulauan tropis saat senja.
+       Terbang dari <b>Pulau Senja</b>, ambil paket lewat <b>ring hijau</b>, antar ke
+       <b>runway pulau tujuan yang berlampu</b> — mendarat mulus atau terbang pelan-rendah lewat ring kuning.</p>
+    <p>📦 <b>Surat Kilat</b> (cepat) → Pulau Karang &nbsp;•&nbsp; <b>Kargo Kopi</b> (420 kg, berat &amp; boros fuel)
+       → Pulau Merapi &nbsp;•&nbsp; <b>Kaca Patri</b> (rapuh — jangan manuver kasar!) → Pulau Mercusuar.</p>
+    <p>⛽ Fuel menipis? Isi ulang di <b>Pulau Senja</b> atau <b>Pulau Transit</b>.
+       Awas tebing &amp; laut — tabrakan merusak pesawat. Senja hanya 8 menit!</p>
+    <p class="keys">↑ / ↓ pitch &nbsp;•&nbsp; ← / → roll &amp; belok &nbsp;•&nbsp; Shift throttle naik, Ctrl turun<br>
+       Space rem udara &nbsp;•&nbsp; C ganti kamera (chase / kokpit) &nbsp;•&nbsp; P pause &nbsp;•&nbsp; R restart</p>
+    <button class="big-btn" id="btn-start">🛫 MULAI TERBANG</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="pause-screen">
+  <div class="card">
+    <h1>⏸️ JEDA</h1>
+    <h2>Pesawat menunggu di angkasa senja.</h2>
+    <button class="big-btn" id="btn-resume">▶ LANJUT TERBANG</button><br>
+    <button class="ghost-btn" id="btn-menu">Kembali ke menu</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="end-screen">
+  <div class="card">
+    <h1 id="end-title">🎉 SEMUA PAKET TERKIRIM!</h1>
+    <p id="end-score">Skor akhir: 0</p>
+    <p id="end-reason"></p>
+    <button class="big-btn" id="btn-restart">🔄 TERBANG LAGI (R)</button>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script src="./src/config.js"></script>
+<script src="./src/audio.js"></script>
+<script src="./src/input.js"></script>
+<script src="./src/flight.js"></script>
+<script src="./src/terrain.js"></script>
+<script src="./src/aircraft.js"></script>
+<script src="./src/camera.js"></script>
+<script src="./src/hud.js"></script>
+<script src="./src/missions.js"></script>
+<script src="./src/main.js"></script>
+</body>
+</html>
